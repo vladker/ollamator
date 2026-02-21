@@ -2,8 +2,9 @@
 .SYNOPSIS
   Pull Ollama models in parallel on Windows.
 .DESCRIPTION
-  * Можно передать JSON‑файл с моделью, либо использовать встроенный список.
-  * Ограничение количества одновременных задач задаётся `-ParallelJobs`.
+  * Pass a JSON file with models using the `-JsonFile` parameter, or use the built-in list.
+  * Parallel job limit is set with `-ParallelJobs`.
+  * Example: .\pull_models.ps1 -JsonFile models.json -ParallelJobs 5
 #>
 
 param(
@@ -31,8 +32,25 @@ if ($JsonFile -ne "" -and -not (Test-Path $JsonFile)) {
 # 3️⃣  Формируем список моделей
 # -------------------------------------------------------------------------
 if ($JsonFile -ne "") {
-    $json = Get-Content $JsonFile -Raw | ConvertFrom-Json
-    $models = $json.integrations.opencode.models
+    # Проверяем, что файл существует
+    if (-not (Test-Path $JsonFile)) {
+        Write-Error "JSON file '$JsonFile' does not exist."
+        exit 1
+    }
+    
+    try {
+        $json = Get-Content $JsonFile -Raw | ConvertFrom-Json
+        $models = $json.integrations.opencode.models
+        
+        if ($null -eq $models) {
+            Write-Error "No 'models' array found in JSON file '$JsonFile'. Please check the JSON structure."
+            exit 1
+        }
+    }
+    catch {
+        Write-Error "Error parsing JSON file '$JsonFile': $($_.Exception.Message)"
+        exit 1
+    }
 } else {
     # Встроенный список (проверьте, совпадает с вашим JSON)
     $models = @(
